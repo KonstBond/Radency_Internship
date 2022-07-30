@@ -20,7 +20,14 @@ namespace Task1
 
         protected async override void OnStart(string[] args)
         {
-            
+            await Task.Run(() =>
+            {
+                while (true)
+                {
+                    File.AppendAllText(@"C:\Users\admin\Desktop\123.txt", "I'am working");
+                    Task.Delay(300);
+                }
+            });
         }
 
         protected async override void OnStop()
