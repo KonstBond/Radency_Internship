@@ -1,8 +1,13 @@
 ﻿using System;
-using Newtonsoft.Json;
+using System.IO;
+using System.Collections.Generic;
 using Task1.ClientParser;
 using System.Configuration;
 using System.Text.RegularExpressions;
+using System.Linq;
+using System.Threading.Tasks;
+using System.Text;
+using Task1.Client;
 
 namespace Task1
 {
@@ -18,19 +23,17 @@ namespace Task1
         public char SeparatorAttribute { get; private set; }
         public string SeparatorAddress { get; private set; }
 
-        public Core()
+        public Core(DirectoryInfo directoryA, DirectoryInfo directoryB)
         {
-            var appSettings = ConfigurationManager.AppSettings;
-            //_directoryA = new DirectoryInfo(@"folder_a");
-            //_directoryB = new DirectoryInfo(@"folder_b");
+            _directoryA = directoryA;
+            _directoryB = directoryB;
 
-            _directoryA = new DirectoryInfo(@"C:\Users\admin\Desktop\folder_a");
             CheckFiles = new List<string>();
         }
 
         public async Task<IEnumerable<string>> ReadFileAsync()
         {
-            FileInfo? file = null;
+            FileInfo file = null;
             try
             {
                 file = _directoryA.GetFiles(".")
@@ -62,7 +65,7 @@ namespace Task1
                 return Enumerable.Empty<string>();
 
             CheckFiles.Add(file.Name);
-            return await File.ReadAllLinesAsync(file.FullName);
+            return await ReadAllLinesAsync(file.FullName);
         }
 
         public async Task<IEnumerable<RawClient>> Validate(IEnumerable<string> rawData)
@@ -75,7 +78,7 @@ namespace Task1
             });
 
             var context = new Context(new Name(), SeparatorAttribute, SeparatorAddress);
-            List<string>? clients = validateData.ToList();
+            List<string> clients = validateData.ToList();
 
             List<RawClient> rawClients = new List<RawClient>();
             for (int i = 0; i < clients.Count; i++)
@@ -100,10 +103,10 @@ namespace Task1
 
         public async Task<IEnumerable<ResultClient>> Transform(IEnumerable<RawClient> rawClients)
         {
-            return await Task.Run<IEnumerable<ResultClient>>(() =>
+            return await Task.Run(() =>
             {
                 var res = from c in rawClients
-                          group c by c.Address[..c.Address.IndexOf(',')] into city
+                          group c by c.Address.Substring(0, c.Address.IndexOf(',')) into city
                           select new ResultClient
                           {
                               City = city.Key,
@@ -122,10 +125,41 @@ namespace Task1
                                                       },
                                              Total = service.Where(c => c.Service == service.Key).Sum(c => c.Payment)
                                          },
-                              Total = city.Where(c => c.Address[..c.Address.IndexOf(',')] == city.Key).Sum(c => c.Payment)
+                              Total = city.Where(c => c.Address.Substring(0, c.Address.IndexOf(',')) == city.Key).Sum(c => c.Payment)
                           };
                 return res;
             });
+        }
+
+        public async Task WriteFileAsync(string JsonResult, long counter)
+        {
+            await Task.Run(() =>
+            {
+                DirectoryInfo directory = Directory.CreateDirectory(_directoryB + $@"/{DateTime.Now.Month}-{DateTime.Now.Day}-{DateTime.Now.Year}");
+                File.Create(directory.FullName + $@"output{counter}.json");
+                File.WriteAllText(directory.FullName + $@"output{counter}.json", JsonResult, Encoding.UTF8);
+            });
+        }
+
+
+        //File.ReadAllLinesAsync / .NET Framework 4.8
+        private const int DefaultBufferSize = 4096;
+        private const FileOptions DefaultOptions = FileOptions.Asynchronous | FileOptions.SequentialScan;
+
+        private static async Task<IEnumerable<string>> ReadAllLinesAsync(string filePath)
+        {
+            var lines = new List<string>();
+
+            var sourceStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read, DefaultBufferSize, DefaultOptions);
+            var reader = new StreamReader(sourceStream, Encoding.Unicode);
+
+            string line;
+            while ((line = await reader.ReadLineAsync()) != null)
+                lines.Add(line);
+
+            reader.Close();
+            sourceStream.Close();
+            return lines;
         }
     }
 

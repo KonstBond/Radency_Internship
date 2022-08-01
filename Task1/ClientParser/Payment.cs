@@ -1,14 +1,14 @@
 ﻿using System;
-using Task1.Model;
+using Task1.Client;
 using System.Globalization;
 
-namespace Temp.Validate
+namespace Task1.ClientParser
 {
     public class Payment : Attribute
     {
-        public override string Validate(string input, Client client)
+        public override string Validate(string input, RawClient client)
         {
-            string payment = input.Substring(0, input.IndexOf(_context.Separator));
+            string payment = input.Substring(0, input.IndexOf(_context.SeparatorAttribute));
             input = input.Remove(0, payment.Length + 1).Trim();
 
             if (!(payment.Length > 0) && string.IsNullOrEmpty(payment)

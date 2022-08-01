@@ -1,10 +1,13 @@
-﻿namespace Temp.Validate
+﻿using System;
+using Task1.Client;
+
+namespace Task1.ClientParser
 {
     public class Date : Attribute
     {
-        public override string Validate(string input, Client client)
+        public override string Validate(string input, RawClient client)
         {
-            string date = input.Substring(0, input.IndexOf(_context.Separator));
+            string date = input.Substring(0, input.IndexOf(_context.SeparatorAttribute));
             input = input.Remove(0, date.Length + 1).Trim();
 
             if (!(date.Length > 0) || string.IsNullOrEmpty(date) || string.IsNullOrWhiteSpace(date) ||

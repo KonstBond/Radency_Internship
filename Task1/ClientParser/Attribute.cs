@@ -1,7 +1,6 @@
-﻿using System;
-using Task1.Model;
+﻿using Task1.Client;
 
-namespace Temp.Validate
+namespace Task1.ClientParser
 {
     public abstract class Attribute
     {
@@ -12,6 +11,6 @@ namespace Temp.Validate
             _context = context;
         }
 
-        public abstract string Validate(string input, Client client);
+        public abstract string Validate(string input, RawClient client);
     }
 }
