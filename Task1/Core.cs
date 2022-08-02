@@ -2,12 +2,13 @@
 using System.IO;
 using System.Collections.Generic;
 using Task1.ClientParser;
-using System.Configuration;
+using Newtonsoft.Json;
 using System.Text.RegularExpressions;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Text;
 using Task1.Client;
+using Task1.Logger;
 
 namespace Task1
 {
@@ -15,8 +16,11 @@ namespace Task1
     {
         private DirectoryInfo _directoryA;
         private DirectoryInfo _directoryB;
+        private DirectoryInfo _directoryC;
         private string ValidatePattern;
         private List<string> CheckFiles;
+        private DateTime today;
+        private MetaInfo _metaInfo;
 
         public const string QUOTE = "\"";
 
@@ -27,33 +31,26 @@ namespace Task1
         {
             _directoryA = directoryA;
             _directoryB = directoryB;
-
+            today = DateTime.Now;
+            _metaInfo = new MetaInfo();
             CheckFiles = new List<string>();
         }
 
-        public async Task<IEnumerable<string>> ReadFileAsync()
+        public async Task<List<string>> ReadFileAsync()
         {
-            FileInfo file = null;
-            try
-            {
-                file = _directoryA.GetFiles(".")
-                       .Where(f => f.Name.EndsWith(".txt") || f.Name.EndsWith(".csv"))
-                       .Where(f => !CheckFiles.Contains(f.Name))
-                       .FirstOrDefault();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex.Message);
-            }
+            FileInfo file = _directoryA.GetFiles(".")
+                   .Where(f => f.Extension == ".txt" || f.Extension == ".csv")
+                   .Where(f => !CheckFiles.Contains(f.Name))
+                   .FirstOrDefault();
 
             if (file == null)
-                return Enumerable.Empty<string>();
+                return Enumerable.Empty<string>() as List<string>;
 
             if (file.Extension == ".txt")
             {
                 SeparatorAttribute = ',';
                 SeparatorAddress = @"""";
-                ValidatePattern = @"^\w+, \w+, ""\w+, \w+ \d+, \d+"", \d+\.?\d+, \d{4}-\d{2}-\d{2}, \d{7}, \w+";
+                ValidatePattern = @"^\w+, \w+, ""\w+, \w+ \d+, \d+"",  \d+\.?\d+, \d{4}-\d{2}-\d{2}, \d{7}, \w+";
             }
             else if (file.Extension == ".csv")
             {
@@ -62,26 +59,41 @@ namespace Task1
                 ValidatePattern = @"^\w+;\w+;""""""\w+, \w+ \d+, \d+"""""";\d+\.?\d+;\d{4}-\d{2}-\d{2};\d{7};\w+";
             }
             else
-                return Enumerable.Empty<string>();
+                return Enumerable.Empty<string>() as List<string>;
 
+            _metaInfo.ParsedFiles++;
             CheckFiles.Add(file.Name);
-            return await ReadAllLinesAsync(file.FullName);
-        }
 
-        public async Task<IEnumerable<RawClient>> Validate(IEnumerable<string> rawData)
-        {
-            IEnumerable<string> validateData = await System.Threading.Tasks.Task.Run<IEnumerable<string>>(() =>
+            List<string> rawData = await ReadAllLinesAsync(file.FullName) as List<string>;
+
+            IEnumerable<string> validateData = await Task.Run(() =>
             {
                 return from c in rawData
                        where Regex.IsMatch(c, ValidatePattern)
                        select c;
             });
 
-            var context = new Context(new Name(), SeparatorAttribute, SeparatorAddress);
             List<string> clients = validateData.ToList();
 
-            List<RawClient> rawClients = new List<RawClient>();
-            for (int i = 0; i < clients.Count; i++)
+            _metaInfo.ParsedLines = rawData.Count();
+            if (rawData.Count() != clients.Count)
+            {
+                _metaInfo.FoundErrors = rawData.Count() - clients.Count;
+                _metaInfo.InvalidFiles.Add(file.FullName);
+            }
+
+            return clients;
+        }
+
+        public List<RawClient> TransformToClient(List<string> clients)
+        {
+            if (clients is null || clients.Count == 0)
+                return Enumerable.Empty<RawClient>() as List<RawClient>;
+
+            var context = new Context(new Name(), SeparatorAttribute, SeparatorAddress);
+
+            List <RawClient> rawClients = new List<RawClient>();
+            for (int i = 0; i < clients.Count(); i++)
             {
                 RawClient client = new RawClient();
                 for (int j = 0; j < 7; j++) //7 различных атрибутов
@@ -97,12 +109,14 @@ namespace Task1
 
                 rawClients.Add(client);
             }
-
             return rawClients;
         }
 
-        public async Task<IEnumerable<ResultClient>> Transform(IEnumerable<RawClient> rawClients)
+        public async Task<List<ResultClient>> Transform(List<RawClient> rawClients)
         {
+            if (rawClients is null || rawClients.Count == 0)
+                return Enumerable.Empty<ResultClient>() as List<ResultClient>;
+
             return await Task.Run(() =>
             {
                 var res = from c in rawClients
@@ -120,25 +134,41 @@ namespace Task1
                                                       {
                                                           Name = cP.Name,
                                                           Payment = cP.Payment,
-                                                          Date = cP.Date,
+                                                          Date = cP.Date.Year + "-" + cP.Date.Day +  "-" + cP.Date.Month,
                                                           AccountNumber = cP.AccountNumber
                                                       },
                                              Total = service.Where(c => c.Service == service.Key).Sum(c => c.Payment)
                                          },
                               Total = city.Where(c => c.Address.Substring(0, c.Address.IndexOf(',')) == city.Key).Sum(c => c.Payment)
                           };
-                return res;
+                return res.ToList();
             });
+            
         }
 
-        public async Task WriteFileAsync(string JsonResult, long counter)
+        public void WriteFile(string JsonResult, long counter)
         {
-            await Task.Run(() =>
+            DirectoryInfo directory = Directory.CreateDirectory(_directoryB + $@"\{today.Month}-{today.Day}-{today.Year}\");
+            _directoryC = directory;
+            StreamWriter writer = File.CreateText(_directoryC.FullName + $"output{counter}.json");
+            writer.Write(JsonResult);
+            writer.Close();
+        }
+
+        public void NewDay()
+        { 
+            if (!File.Exists(_directoryC.FullName + "meta.log"))
             {
-                DirectoryInfo directory = Directory.CreateDirectory(_directoryB + $@"/{DateTime.Now.Month}-{DateTime.Now.Day}-{DateTime.Now.Year}");
-                File.Create(directory.FullName + $@"output{counter}.json");
-                File.WriteAllText(directory.FullName + $@"output{counter}.json", JsonResult, Encoding.UTF8);
-            });
+                StreamWriter writer = File.CreateText(_directoryC.FullName + $"meta.log");
+                writer.Write($"parsed files: {_metaInfo.ParsedFiles}\n" +
+                    $"parsed lines: {_metaInfo.ParsedLines}\n" +
+                    $"found errors: {_metaInfo.FoundErrors}\n" +
+                    $"invalid files: {JsonConvert.SerializeObject(_metaInfo.InvalidFiles)}");
+                writer.Close();
+
+                _metaInfo = new MetaInfo();
+                today = today.AddDays(1);
+            }
         }
 
 
@@ -151,7 +181,7 @@ namespace Task1
             var lines = new List<string>();
 
             var sourceStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read, DefaultBufferSize, DefaultOptions);
-            var reader = new StreamReader(sourceStream, Encoding.Unicode);
+            var reader = new StreamReader(sourceStream, Encoding.UTF8);
 
             string line;
             while ((line = await reader.ReadLineAsync()) != null)

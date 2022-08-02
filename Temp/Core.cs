@@ -3,11 +3,14 @@ using Newtonsoft.Json;
 using Task1.ClientParser;
 using System.Configuration;
 using System.Text.RegularExpressions;
+using System.Text;
 
 namespace Task1
 {
     public class Core
     {
+        //test
+
         private DirectoryInfo _directoryA;
         private DirectoryInfo _directoryB;
         private string ValidatePattern;
@@ -18,13 +21,10 @@ namespace Task1
         public char SeparatorAttribute { get; private set; }
         public string SeparatorAddress { get; private set; }
 
-        public Core()
+        public Core(DirectoryInfo directoryA, DirectoryInfo directoryB)
         {
-            var appSettings = ConfigurationManager.AppSettings;
-            //_directoryA = new DirectoryInfo(@"folder_a");
-            //_directoryB = new DirectoryInfo(@"folder_b");
-
-            _directoryA = new DirectoryInfo(@"C:\Users\admin\Desktop\folder_a");
+            _directoryA = directoryA;
+            _directoryB = directoryB;
             CheckFiles = new List<string>();
         }
 
@@ -91,10 +91,8 @@ namespace Task1
                         break;
                     }
                 }
-
                 rawClients.Add(client);
             }
-
             return rawClients;
         }
 
@@ -125,6 +123,17 @@ namespace Task1
                               Total = city.Where(c => c.Address[..c.Address.IndexOf(',')] == city.Key).Sum(c => c.Payment)
                           };
                 return res;
+            });
+        }
+
+        public async Task WriteFileAsync(string JsonResult, long counter)
+        {
+            await Task.Run(() =>
+            {
+                DirectoryInfo directory = Directory.CreateDirectory(_directoryB + $@"\{DateTime.Now.Month}-{DateTime.Now.Day}-{DateTime.Now.Year}\");
+                StreamWriter writer = File.CreateText(directory.FullName + $"output{counter}.json");
+                writer.Write(JsonResult);
+                writer.Close();
             });
         }
     }

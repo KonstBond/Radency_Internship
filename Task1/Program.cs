@@ -12,7 +12,7 @@ namespace Task1
         /// <summary>
         /// Главная точка входа для приложения.
         /// </summary>
-        static async Task Main()
+        static void Main()
         {
             ServiceBase[] ServicesToRun;
 

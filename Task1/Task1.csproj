@@ -65,6 +65,7 @@
     <Compile Include="Client\ResultClient.cs" />
     <Compile Include="Client\Service.cs" />
     <Compile Include="Core.cs" />
+    <Compile Include="Logger\MetaInfoArg.cs" />
     <Compile Include="ProjectInstaller.cs">
       <SubType>Component</SubType>
     </Compile>
@@ -89,5 +90,6 @@
       <DependentUpon>ProjectInstaller.cs</DependentUpon>
     </EmbeddedResource>
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

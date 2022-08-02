@@ -6,6 +6,8 @@ using System.IO;
 using System.ServiceProcess;
 using System.Threading.Tasks;
 using System.Configuration;
+using System.Diagnostics;
+using System.Windows;
 
 namespace Task1
 {
@@ -18,35 +20,38 @@ namespace Task1
 
         protected async override void OnStart(string[] args)
         {
-            try
-            {
-                DirectoryInfo directoryA = new DirectoryInfo(ConfigurationManager.AppSettings["A"]);
-                DirectoryInfo directoryB = new DirectoryInfo(ConfigurationManager.AppSettings["B"]);
-                Core core = new Core(directoryA, directoryB);
-                long counter = 0;
+            DirectoryInfo directoryA = new DirectoryInfo(ConfigurationManager.AppSettings["A"]);
+            DirectoryInfo directoryB = new DirectoryInfo(ConfigurationManager.AppSettings["B"]);
+            Core core = new Core(directoryA, directoryB);
+            long counter = 0;
+            bool isNewday = true;
 
-                await Task.Run(async () =>
+            await Task.Run(async () =>
+            {
+                while (true)
                 {
-                    while (true)
+                    if (DateTime.Now.Hour == 21 && DateTime.Now.Minute == 12 && !isNewday)
+                        isNewday = true;
+
+                    if (DateTime.Now.Hour == 21 && DateTime.Now.Minute == 11 && DateTime.Now.Second >= 0 && isNewday)
                     {
-                        IEnumerable<ResultClient> client = await core.Transform(await core.Validate(await core.ReadFileAsync()));
-                        string result = JsonConvert.SerializeObject(client, Formatting.Indented);
-
-                        await core.WriteFileAsync(result, ++counter);
+                        core.NewDay();
+                        counter = 0;
+                        isNewday = false;
                     }
-                });
 
-            }
-            catch (Exception ex)
-            {
-                StreamWriter streamWriter = File.CreateText(@"C:\Users\admin\Desktop\123.txt");
-                await streamWriter.WriteAsync(ex.Message + "\n");
-                streamWriter.Close();
-            }
-            finally
-            {
-                OnStop();
-            }
+                    List<ResultClient> clients = await core.Transform(core.TransformToClient(await core.ReadFileAsync()));
+                    if (clients is null)
+                        continue;
+                    string result = JsonConvert.SerializeObject(clients, Formatting.Indented);
+                    if (result == "[]")
+                        continue;
+                    else
+                    {
+                        core.WriteFile(result, ++counter);
+                    }
+                }
+            });
         }
 
         protected async override void OnStop()
