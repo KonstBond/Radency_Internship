@@ -30,10 +30,10 @@ namespace Task1
             {
                 while (true)
                 {
-                    if (DateTime.Now.Hour == 21 && DateTime.Now.Minute == 12 && !isNewday)
+                    if (DateTime.Now.Hour == 0 && DateTime.Now.Minute == 10  && !isNewday)
                         isNewday = true;
 
-                    if (DateTime.Now.Hour == 21 && DateTime.Now.Minute == 11 && DateTime.Now.Second >= 0 && isNewday)
+                    if (DateTime.Now.Hour == 0 && DateTime.Now.Minute == 0 && DateTime.Now.Second >= 0 && isNewday)
                     {
                         core.NewDay();
                         counter = 0;
