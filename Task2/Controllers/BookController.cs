@@ -26,37 +26,12 @@ namespace Task2.Controllers
 
         // GET: api/<HomeController>/{author}
         [HttpGet]
-        [Route("{author?}")]
-        public async Task<IEnumerable> GetAll([FromRoute] string? author)
+        [Route("{order?=author}")]
+        public async Task<IEnumerable> GetAll([FromRoute] string? order)
         {
             return await Task.Run<IEnumerable>(() =>
             {
-                if (author is null)
-                {
-                    return _context.Books.ToList()
-                        .GroupJoin(_context.Ratings,
-                        b => b.Id,
-                        rat => rat.BookId,
-                        (book, rat) => new
-                        {
-                            Book = book,
-                            Rating = rat.Average(rat => rat?.Score) ?? 0
-                        })
-                        .GroupJoin(_context.Reviews,
-                        b => b.Book.Id,
-                        rev => rev.BookId,
-                        (BookRating, rev) => new
-                        {
-                            Id = BookRating.Book.Id,
-                            Title = BookRating.Book.Title,
-                            Author = BookRating.Book.Author,
-                            Rating = BookRating.Rating,
-                            ReviewsNumber = rev?.Count()
-                        }).ToList();
-                }
-                else
-                {
-                    var result = _context.Books.ToList()
+                var result = _context.Books.ToList()
                         .GroupJoin(_context.Ratings,
                         b => b.Id,
                         rat => rat.BookId,
@@ -77,13 +52,27 @@ namespace Task2.Controllers
                             ReviewsNumber = rev?.Count()
                         }).ToList();
 
-                    return result.Where(b => b.Author.StartsWith(author))
-                          .OrderBy(b => b.Author.StartsWith(author))
-                          .Concat(result.Where(b => !b.Author.StartsWith(author))
-                                        .OrderBy(b => b.Author));
+                if (order?.ToLower() == "author")
+                {
+                    return result.Where(b => b.Author.StartsWith(order))
+                                 .OrderBy(b => b.Author.StartsWith(order))
+                                 .Concat(result.Where(b => !b.Author.StartsWith(order))
+                                                .OrderBy(b => b.Author));
                 }
+
+                else if (order?.ToLower() == "title")
+                {
+                    return result.Where(b => b.Title.StartsWith(order))
+                                 .OrderBy(b => b.Title.StartsWith(order))
+                                 .Concat(result.Where(b => !b.Title.StartsWith(order))
+                                                .OrderBy(b => b.Title)); 
+                }
+                else
+                    return result;
             });
         }
+
+        public async Tas
 
         // POST api/<HomeController>
         [HttpPost]
