@@ -1,4 +1,7 @@
-﻿namespace Task2.Models.LibraryModel
+﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
+namespace Task2.Models.LibraryModel
 {
     public class Book
     {
