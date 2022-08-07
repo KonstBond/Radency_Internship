@@ -18,9 +18,7 @@ namespace Task2.Migrations
                     Cover = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Content = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Author = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Genre = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    RatingId = table.Column<int>(type: "int", nullable: true),
-                    ReviewId = table.Column<int>(type: "int", nullable: true)
+                    Genre = table.Column<string>(type: "nvarchar(max)", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -33,15 +31,15 @@ namespace Task2.Migrations
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    BookId = table.Column<int>(type: "int", nullable: false),
+                    BookID = table.Column<int>(type: "int", nullable: false),
                     Score = table.Column<int>(type: "int", nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Ratings", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_Ratings_Books_BookId",
-                        column: x => x.BookId,
+                        name: "FK_Ratings_Books_BookID",
+                        column: x => x.BookID,
                         principalTable: "Books",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
@@ -54,65 +52,33 @@ namespace Task2.Migrations
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     Message = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    BookId = table.Column<int>(type: "int", nullable: false),
+                    BookID = table.Column<int>(type: "int", nullable: false),
                     Reviewer = table.Column<string>(type: "nvarchar(max)", nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Reviews", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_Reviews_Books_BookId",
-                        column: x => x.BookId,
+                        name: "FK_Reviews_Books_BookID",
+                        column: x => x.BookID,
                         principalTable: "Books",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateIndex(
-                name: "IX_Books_RatingId",
-                table: "Books",
-                column: "RatingId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Books_ReviewId",
-                table: "Books",
-                column: "ReviewId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Ratings_BookId",
+                name: "IX_Ratings_BookID",
                 table: "Ratings",
-                column: "BookId");
+                column: "BookID");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Reviews_BookId",
+                name: "IX_Reviews_BookID",
                 table: "Reviews",
-                column: "BookId");
-
-            migrationBuilder.AddForeignKey(
-                name: "FK_Books_Ratings_RatingId",
-                table: "Books",
-                column: "RatingId",
-                principalTable: "Ratings",
-                principalColumn: "Id");
-
-            migrationBuilder.AddForeignKey(
-                name: "FK_Books_Reviews_ReviewId",
-                table: "Books",
-                column: "ReviewId",
-                principalTable: "Reviews",
-                principalColumn: "Id");
+                column: "BookID");
         }
 
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropForeignKey(
-                name: "FK_Books_Ratings_RatingId",
-                table: "Books");
-
-            migrationBuilder.DropForeignKey(
-                name: "FK_Books_Reviews_ReviewId",
-                table: "Books");
-
             migrationBuilder.DropTable(
                 name: "Ratings");
 

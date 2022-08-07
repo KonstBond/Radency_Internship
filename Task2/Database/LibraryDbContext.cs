@@ -7,7 +7,8 @@ namespace Task2.Database
     {
         public LibraryDbContext(DbContextOptions<LibraryDbContext> options)
             :base (options)
-        { }
+        {
+        }
 
         public DbSet<Book> Books { get; set; }
         public DbSet<Rating> Ratings { get; set; }
@@ -16,14 +17,14 @@ namespace Task2.Database
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<Book>()
-                .HasMany<Review>()
-                .WithOne()
-                .HasForeignKey(r => r.BookId);
+                .HasMany(b => b.Ratings)
+                .WithOne(r => r.Book)
+                .HasForeignKey(r => r.BookID);
 
             modelBuilder.Entity<Book>()
-                .HasMany<Rating>()
-                .WithOne()
-                .HasForeignKey(r => r.BookId);
+                .HasMany(b => b.Reviews)
+                .WithOne(r => r.Book)
+                .HasForeignKey(r => r.BookID);
         }
     }
 }

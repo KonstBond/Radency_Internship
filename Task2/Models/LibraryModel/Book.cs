@@ -1,8 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using System.Buffers.Text;
-
-namespace Task2.Models.LibraryModel
+﻿namespace Task2.Models.LibraryModel
 {
     public class Book
     {
@@ -12,5 +8,7 @@ namespace Task2.Models.LibraryModel
         public string Content { get; set; }
         public string Author { get; set; }
         public string Genre { get; set; }
+        public List<Rating> Ratings { get; set; }
+        public List<Review> Reviews { get; set; }
     }
 }

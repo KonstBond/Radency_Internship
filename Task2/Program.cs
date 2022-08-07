@@ -1,27 +1,19 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Task2;
 using Task2.Database;
 
-var builder = WebApplication.CreateBuilder(args);
-
-// Add services to the container.
-
-builder.Services.AddControllers();
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
-builder.Services.AddDbContext<LibraryDbContext>(o => o.UseSqlServer(builder.Configuration.GetConnectionString("ConnectToDb")));
-
-var app = builder.Build();
-
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+public class Program
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
+    public static void Main()
+    {
+        CreateHostBuilder().Build().Run();
+    }
+
+    public static IHostBuilder CreateHostBuilder() =>
+        Host.CreateDefaultBuilder()
+        .ConfigureWebHostDefaults(webBuilder =>
+        {
+            webBuilder.UseStartup<Startup>();
+        });
 }
-
-app.UseAuthorization();
-
-app.MapControllers();
-
-app.Run();
