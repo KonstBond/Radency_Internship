@@ -13,18 +13,20 @@ namespace Task2.Controllers
     [ApiController]
     public class ApiController : ControllerBase
     {
+        private readonly ILogger<ApiController> _logger;
         private readonly LibraryDbContext _context;
 
-        public ApiController(LibraryDbContext context)
+        public ApiController(LibraryDbContext context, ILogger<ApiController> logger)
         {
+            _logger = logger;
             _context = context;
         }
 
         [HttpGet]
         [Route("[action]")]
-        public async Task<IEnumerable<BookViewModel>> Book([FromQuery] string? order = "author")
+        public async Task<IActionResult> Book([FromQuery] string? order = "author")
         {
-            return await Task.Run(() =>
+            return await Task.Run<IActionResult>(() =>
             {
                 IEnumerable<BookViewModel> result = _context.Books.ToList()
                         .GroupJoin(_context.Ratings,
@@ -49,30 +51,32 @@ namespace Task2.Controllers
 
                 if (order?.ToLower() == "author")
                 {
-                    return result.Where(b => b.Author.StartsWith(order))
+
+                    result = result.Where(b => b.Author.StartsWith(order))
                                  .OrderBy(b => b.Author.StartsWith(order))
                                  .Concat(result.Where(b => !b.Author.StartsWith(order))
                                                 .OrderBy(b => b.Author));
+                    return Ok(result);
                 }
                 else if (order?.ToLower() == "title")
                 {
-                    return result.Where(b => b.Title.StartsWith(order))
+                    result = result.Where(b => b.Title.StartsWith(order))
                                  .OrderBy(b => b.Title.StartsWith(order))
                                  .Concat(result.Where(b => !b.Title.StartsWith(order))
                                                 .OrderBy(b => b.Title));
                 }
-                else
-                    return result;
+                
+                return Ok(result);
             });
         }
 
         [HttpGet]
         [Route("[action]")]
-        public async Task<IEnumerable<BookViewModel>> Recommended([FromQuery] string? ganre = "horror")
+        public async Task<IActionResult> Recommended([FromQuery] string? ganre = "horror")
         {
-            return await Task.Run(() =>
+            return await Task.Run<IActionResult>(() =>
             {
-                return _context.Books
+                var result = _context.Books
                        .Where(b => b.Genre == ganre)
                        .ToList()
                        .GroupJoin(_context.Ratings,
@@ -97,16 +101,20 @@ namespace Task2.Controllers
                        .Where(b => b.ReviewsNumber > 10)
                        .OrderBy(b => b.Rating)
                        .Take(10);
+
+                return Ok(result);
             });
         }
 
         [HttpGet]
         [Route("books/{id}")]
-        public async Task<IEnumerable<FullInfoBookViewModel>> AllInfo([FromRoute] int id)
+        public async Task<IActionResult> BookDetails([FromRoute]int id)
         {
-            return await Task.Run<IEnumerable<FullInfoBookViewModel>>(() =>
+            return await Task.Run<IActionResult>(() =>
             {
-                return _context.Books
+                if (_context.Books.FirstOrDefault(b => b.Id == id) is not null)
+                {
+                    var result = _context.Books
                            .ToList()
                            .GroupJoin(_context.Ratings,
                            b => b.Id,
@@ -136,54 +144,87 @@ namespace Task2.Controllers
                                          }
 
                            }).ToList();
+
+                    return Ok(result);
+                }
+                else
+                {
+                    return BadRequest("Not Found this book");
+                }
             });
         }
 
         [HttpPost]
         [Route("books/[action]")]
-        public async Task<int> Save(NewBookViewModel newBookViewModel)
+        public async Task<IActionResult> Save(NewBookViewModel newBookViewModel)
         {
-            newBookViewModel.Cover = Convert.ToBase64String(Encoding.Unicode.GetBytes(newBookViewModel.Cover));
-            Book? DbBook = await _context.Books.FindAsync(new object[] { newBookViewModel.ID });
-            if (DbBook is null)
+            if (ModelState.IsValid)
             {
-                await _context.Books.AddAsync(new Book()
+                newBookViewModel.Cover = Convert.ToBase64String(Encoding.Unicode.GetBytes(newBookViewModel.Cover));
+                Book? DbBook = await _context.Books.FindAsync(new object[] { newBookViewModel.ID });
+                if (DbBook is null)
                 {
-                    Id = 0,
-                    Author = newBookViewModel.Author,
-                    Content = newBookViewModel.Content,
-                    Cover = newBookViewModel.Cover,
-                    Genre = newBookViewModel.Genre,
-                    Title = newBookViewModel.Title
-                });
+                    await _context.Books.AddAsync(new Book()
+                    {
+                        Id = 0,
+                        Author = newBookViewModel.Author,
+                        Content = newBookViewModel.Content,
+                        Cover = newBookViewModel.Cover,
+                        Genre = newBookViewModel.Genre,
+                        Title = newBookViewModel.Title
+                    });
+                }
+                else
+                {
+                    DbBook.Author = newBookViewModel.Author;
+                    DbBook.Title = newBookViewModel.Title;
+                    DbBook.Content = newBookViewModel.Content;
+                    DbBook.Cover = newBookViewModel.Cover;
+                    DbBook.Genre = newBookViewModel.Genre;
+                }
+                await _context.SaveChangesAsync();
+                return Ok(newBookViewModel.ID);
             }
             else
             {
-                DbBook.Author = newBookViewModel.Author;
-                DbBook.Title = newBookViewModel.Title;
-                DbBook.Content = newBookViewModel.Content;
-                DbBook.Cover = newBookViewModel.Cover;
-                DbBook.Genre = newBookViewModel.Genre;
+                return BadRequest(ModelState.ErrorCount);
             }
-            await _context.SaveChangesAsync();
-            return newBookViewModel.ID;
+            
         }
 
         [HttpPut]
         [Route("books/{id}/[action]")]
-        public async Task<int> Review(int id, ReviewViewModel reviewViewModel)
+        public async Task<IActionResult> Review(int id, ReviewViewModel reviewViewModel)
         {
-            Review review = new Review()
+            return await Task.Run<IActionResult>(async () =>
             {
-                BookID = id,
-                Message = reviewViewModel.Message,
-                Reviewer = reviewViewModel.Reviewer
-            };
-
-            await _context.Reviews.AddAsync(review);
-            await _context.SaveChangesAsync();
-
-            return review.Id;
+                if (_context.Books.FirstOrDefault(b => b.Id == id) is not null)
+                {
+                    if (ModelState.IsValid)
+                    {
+                        Review review = new Review()
+                        {
+                            BookID = id,
+                            Message = reviewViewModel.Message,
+                            Reviewer = reviewViewModel.Reviewer
+                        };
+                        
+                        await _context.Reviews.AddAsync(review);
+                        await _context.SaveChangesAsync();
+                        return Ok(review.Id);
+                    }
+                    else
+                    {
+                        return BadRequest(ModelState.ErrorCount);
+                    }
+                }
+                else
+                {
+                    return BadRequest("Not found a book");
+                }
+            });
+            
+            
         }
 
         [HttpPut]
@@ -191,15 +232,22 @@ namespace Task2.Controllers
         public async Task<IActionResult> Rate(int id, NewRatingViewModel newRating)
         {
             if (_context.Books.FirstOrDefault(b => b.Id == id) == null)
-                return BadRequest();
+                return BadRequest("Book is not found");
             else
             {
-                await _context.Ratings.AddAsync(new Rating()
+                if (ModelState.IsValid)
                 {
-                    BookID = id,
-                    Score = newRating.Rating
-                });
-                return Ok();
+                    await _context.Ratings.AddAsync(new Rating()
+                    {
+                        BookID = id,
+                        Score = newRating.Rating
+                    });
+                    return Ok();
+                }
+                else
+                {
+                    return BadRequest(ModelState.ErrorCount);
+                }
             }
         }
 
@@ -219,13 +267,13 @@ namespace Task2.Controllers
                     }
                     else
                     {
-                        return BadRequest();
+                        return BadRequest("Book is not found");
                     }
                     return Ok();
                 }
                 else
                 {
-                    return BadRequest();
+                    return BadRequest("Secret is not true");
                 }
             });
         }

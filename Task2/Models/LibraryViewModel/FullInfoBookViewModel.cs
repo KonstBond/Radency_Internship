@@ -1,4 +1,5 @@
-﻿using Task2.Models.LibraryModel;
+﻿using System.ComponentModel.DataAnnotations;
+using Task2.Models.LibraryModel;
 
 namespace Task2.Models.LibraryViewModel
 {

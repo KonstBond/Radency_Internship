@@ -1,4 +1,6 @@
-﻿namespace Task2.Models.LibraryViewModel
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace Task2.Models.LibraryViewModel
 {
     public class FullReviewViewModel
     {
